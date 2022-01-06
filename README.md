@@ -101,11 +101,11 @@ import pycold
 
 ## Step 3: uconn_hpc_pycold package for production
 
-It is still under development, so please pull the repo everytime to keep updated :
+Clone:
 
 ```
-cd /your_folder/uconn_hpc_pyocld
-git pull
+git clone https://github.com/GERSL/uconn_hpc_pycold/uconn_hpc_pycold.git
+cd uconn_hpc_pycold
 ```
 
 #### parameter.yaml
