@@ -1,0 +1,9 @@
+__pycache__/
+singlepath_landsat_tile_crop_compress.tif
+AutoPrepareDataARD.log
+slurm*
+.idea/*
+.DS_Store
+submit_AutoPrepareDataARD.sh
+submit_exportChangeMap.sh
+submit_pycold_workflow.sh
