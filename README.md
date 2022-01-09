@@ -108,9 +108,9 @@ git clone https://github.com/GERSL/uconn_hpc_pycold/uconn_hpc_pycold.git
 cd uconn_hpc_pycold
 ```
 
-#### parameter.yaml
+#### config.yaml
 
-The package relies on parameter.yaml to control parameters. Just change it as you need. There are seven parameters so far:
+The package relies on config.yaml to control configuration. Just change it as you need. There are seven configs so far:
 
 - n_rows: the row number of the dataset 
 
@@ -142,7 +142,7 @@ To use it, you need to change the below four lines:
 h="027"   # the h id of your ard tile
 v="009"    # the v id of your ard tile
 working_dir="/scratch/your_scratch_folder"   # the place to save the result folder
-yaml_path="/home/your_home_folder/uconn_hpc_pycold/parameters.yaml"   # the path of your parameter yaml
+yaml_path="/home/your_home_folder/uconn_hpc_pycold/config.yaml"   # the path of your config yaml
 ```
 
 This job typically took 15 mins  to finish (200 cores, skylake or EpycPriority nodes); you will see a folder named 'h * v * _stack' created in working_dir.
@@ -155,7 +155,7 @@ A script for submitting the COLD algorithm job. Again, please rename it to **sub
 h="027"   # the h id of your ard tile
 v="009"    # the v id of your ard tile
 working_dir="/scratch/your_scratch_folder"   # the place to save the result folder
-yaml_path="/home/your_home_folder/uconn_hpc_pycold/parameters.yaml"   # the path of your parameter yaml
+yaml_path="/home/your_home_folder/uconn_hpc_pycold/config.yaml"   # the path of your config yaml
 ```
 
 This process typically took 1-1.5 hours to finish (200 cores, skylake or EpycPriority nodes); you will see a folder named 'h * v * _results' created in working_dir.
@@ -170,7 +170,7 @@ v="009"   # the v id of your ard tile
 reccg_path="/scratch/your_scratch_folder/h${h}v${v}_results"  # change it pointed to your scratch folder
 reference_path="/home/your_home_folder/lcmap_lc2001/LCMAP_CU_2001_V01_LCPRI_${h}${v}.tif"   # a reference image that the program can grab georeference for the outputted image.
 out_path="/scratch/your_scratch_folder/h${h}v${v}_results"  # the place to save the result folder
-yaml_path="/home/your_home_folder/Document/uconn_hpc_pycold/parameters.yaml"  # yaml folder
+yaml_path="/home/your_home_folder/Document/uconn_hpc_pycold/config.yaml"  # yaml folder
 ```
 
 The outputted map will be saved in "/scratch/suy20004/h${h}v${v}_results/cold_maps"

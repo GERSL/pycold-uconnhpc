@@ -114,7 +114,7 @@ def load_data(file_name, gdal_driver='GTiff'):
     return image_array, (geotransform, inDs)
 
 
-def single_image_processing(tmp_path, source_dir, out_dir, folder, clear_threshold, path_array, logger, parameters,
+def single_image_processing(tmp_path, source_dir, out_dir, folder, clear_threshold, path_array, logger, config,
                             is_partition=True, low_year_bound=1, upp_year_bound=9999):
     """
     unzip single image, convert bit-pack qa to byte value, and save as numpy as
@@ -126,7 +126,7 @@ def single_image_processing(tmp_path, source_dir, out_dir, folder, clear_thresho
     :param path_array: path array has the same dimension of inputted image, and the pixel value indicates
                       the path which the pixel belongs to; if path_array == none, we will use all path
     :param logger: the handler of logger file
-    :param parameters
+    :param config
     :param is_partition: True, partition each image into blocks; False, save original size of image
     :param low_year_bound: the lower bound of user interested year range
     :param upp_year_bound: the upper bound of user interested year range
@@ -281,55 +281,55 @@ def single_image_processing(tmp_path, source_dir, out_dir, folder, clear_thresho
             QA_band_unpacked[path_array != pathid] = QA_FILL
 
         if is_partition is True:
-            b_width = int(parameters['n_cols'] / parameters['n_block_x'])  # width of a block
-            b_height = int(parameters['n_rows'] / parameters['n_block_y'])
+            b_width = int(config['n_cols'] / config['n_block_x'])  # width of a block
+            b_height = int(config['n_rows'] / config['n_block_y'])
             bytesize = 2  # short16 = 2 * byte
             # source: https://towardsdatascience.com/efficiently-splitting-an-image-into-tiles-in-python-using-numpy-d1bf0dd7b6f7
-            B1_blocks = np.lib.stride_tricks.as_strided(B1, shape=(parameters['n_block_y'],
-                                                        parameters['n_block_x'], b_height, b_width),
-                                                        strides=(parameters['n_cols'] * b_height * bytesize,
+            B1_blocks = np.lib.stride_tricks.as_strided(B1, shape=(config['n_block_y'],
+                                                        config['n_block_x'], b_height, b_width),
+                                                        strides=(config['n_cols'] * b_height * bytesize,
                                                                  b_width * bytesize,
-                                                                 parameters['n_cols'] * bytesize, bytesize))
-            B2_blocks = np.lib.stride_tricks.as_strided(B2, shape=(parameters['n_block_y'],
-                                                        parameters['n_block_x'], b_height, b_width),
-                                                        strides=(parameters['n_cols'] * b_height * bytesize,
+                                                                 config['n_cols'] * bytesize, bytesize))
+            B2_blocks = np.lib.stride_tricks.as_strided(B2, shape=(config['n_block_y'],
+                                                        config['n_block_x'], b_height, b_width),
+                                                        strides=(config['n_cols'] * b_height * bytesize,
                                                                  b_width * bytesize,
-                                                                 parameters['n_cols'] * bytesize, bytesize))
-            B3_blocks = np.lib.stride_tricks.as_strided(B3, shape=(parameters['n_block_y'],
-                                                        parameters['n_block_x'], b_height, b_width),
-                                                        strides=(parameters['n_cols'] * b_height * bytesize,
+                                                                 config['n_cols'] * bytesize, bytesize))
+            B3_blocks = np.lib.stride_tricks.as_strided(B3, shape=(config['n_block_y'],
+                                                        config['n_block_x'], b_height, b_width),
+                                                        strides=(config['n_cols'] * b_height * bytesize,
                                                                  b_width * bytesize,
-                                                                 parameters['n_cols'] * bytesize, bytesize))
-            B4_blocks = np.lib.stride_tricks.as_strided(B4, shape=(parameters['n_block_y'],
-                                                        parameters['n_block_x'], b_height, b_width),
-                                                        strides=(parameters['n_cols'] * b_height * bytesize,
+                                                                 config['n_cols'] * bytesize, bytesize))
+            B4_blocks = np.lib.stride_tricks.as_strided(B4, shape=(config['n_block_y'],
+                                                        config['n_block_x'], b_height, b_width),
+                                                        strides=(config['n_cols'] * b_height * bytesize,
                                                                  b_width * bytesize,
-                                                                 parameters['n_cols'] * bytesize, bytesize))
-            B5_blocks = np.lib.stride_tricks.as_strided(B5, shape=(parameters['n_block_y'],
-                                                        parameters['n_block_x'], b_height, b_width),
-                                                        strides=(parameters['n_cols'] * b_height * bytesize,
+                                                                 config['n_cols'] * bytesize, bytesize))
+            B5_blocks = np.lib.stride_tricks.as_strided(B5, shape=(config['n_block_y'],
+                                                        config['n_block_x'], b_height, b_width),
+                                                        strides=(config['n_cols'] * b_height * bytesize,
                                                                  b_width * bytesize,
-                                                                 parameters['n_cols'] * bytesize, bytesize))
-            B6_blocks = np.lib.stride_tricks.as_strided(B6, shape=(parameters['n_block_y'],
-                                                        parameters['n_block_x'], b_height, b_width),
-                                                        strides=(parameters['n_cols'] * b_height * bytesize,
+                                                                 config['n_cols'] * bytesize, bytesize))
+            B6_blocks = np.lib.stride_tricks.as_strided(B6, shape=(config['n_block_y'],
+                                                        config['n_block_x'], b_height, b_width),
+                                                        strides=(config['n_cols'] * b_height * bytesize,
                                                                  b_width * bytesize,
-                                                                 parameters['n_cols'] * bytesize, bytesize))
-            B7_blocks = np.lib.stride_tricks.as_strided(B7, shape=(parameters['n_block_y'],
-                                                        parameters['n_block_x'], b_height, b_width),
-                                                        strides=(parameters['n_cols'] * b_height * bytesize,
+                                                                 config['n_cols'] * bytesize, bytesize))
+            B7_blocks = np.lib.stride_tricks.as_strided(B7, shape=(config['n_block_y'],
+                                                        config['n_block_x'], b_height, b_width),
+                                                        strides=(config['n_cols'] * b_height * bytesize,
                                                                  b_width * bytesize,
-                                                                 parameters['n_cols'] * bytesize, bytesize))
+                                                                 config['n_cols'] * bytesize, bytesize))
             QA_blocks = np.lib.stride_tricks.as_strided(QA_band_unpacked,
-                                                        shape=(parameters['n_block_y'],
-                                                               parameters['n_block_x'], b_height,
+                                                        shape=(config['n_block_y'],
+                                                               config['n_block_x'], b_height,
                                                                b_width),
-                                                        strides=(parameters['n_cols']*b_height*bytesize,
+                                                        strides=(config['n_cols']*b_height*bytesize,
                                                                  b_width * bytesize,
-                                                                 parameters['n_cols']*bytesize,
+                                                                 config['n_cols']*bytesize,
                                                                  bytesize))
-            for i in range(parameters['n_block_y']):
-                for j in range(parameters['n_block_x']):
+            for i in range(config['n_block_y']):
+                for j in range(config['n_block_x']):
                     # check if no valid pixels in the chip, then eliminate
                     qa_unique = np.unique(QA_blocks[i][j])
 
@@ -429,7 +429,7 @@ def main(source_dir, out_dir, clear_threshold, single_path, rank, n_cores, is_pa
 
     tz = timezone('US/Eastern')
     with open(yaml_path) as yaml_obj:
-        parameters = yaml.safe_load(yaml_obj)
+        config = yaml.safe_load(yaml_obj)
 
     logger = None
     # create needed folders
@@ -443,8 +443,8 @@ def main(source_dir, out_dir, clear_threshold, single_path, rank, n_cores, is_pa
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
         if is_partition is True:
-            for i in range(parameters['n_block_y']):
-                for j in range(parameters['n_block_x']):
+            for i in range(config['n_block_y']):
+                for j in range(config['n_block_x']):
                     block_folder = 'block_x{}_y{}'.format(j + 1, i + 1)
                     if not os.path.exists(join(out_dir, block_folder)):
                         os.mkdir(join(out_dir, block_folder))
@@ -511,10 +511,10 @@ def main(source_dir, out_dir, clear_threshold, single_path, rank, n_cores, is_pa
         else:
             try:
                 path_array = gdal_array.LoadFile(join(os.getcwd(), 'singlepath_landsat_tile_crop_compress.tif'),
-                                                 xoff=tile_h * parameters['n_cols'],
-                                                 yoff=tile_v * parameters['n_rows'],
-                                                 xsize=parameters['n_cols'],
-                                                 ysize=parameters['n_rows'])  # read a partial array
+                                                 xoff=tile_h * config['n_cols'],
+                                                 yoff=tile_v * config['n_rows'],
+                                                 xsize=config['n_cols'],
+                                                 ysize=config['n_rows'])  # read a partial array
                 # from a large file
             except IOError as e:
                 logger.error(e)
@@ -527,7 +527,7 @@ def main(source_dir, out_dir, clear_threshold, single_path, rank, n_cores, is_pa
             break
         folder = folder_list[new_rank]
         single_image_processing(tmp_path, source_dir, out_dir, folder, clear_threshold, path_array, logger,
-                                parameters, is_partition=is_partition, low_year_bound=low_year_bound,
+                                config, is_partition=is_partition, low_year_bound=low_year_bound,
                                 upp_year_bound=upp_year_bound)
 
     # create an empty file for signaling the core that has been finished

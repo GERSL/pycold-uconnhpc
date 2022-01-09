@@ -17,7 +17,7 @@
 h="027"   # the h id of your ard tile
 v="009"    # the v id of your ard tile
 working_dir="/scratch/your_scratch_folder"   # the place to save the result folder
-yaml_path="/home/your_home_folder/uconn_hpc_pycold/parameters.yaml"   # the path of your parameter yaml
+yaml_path="/home/your_home_folder/uconn_hpc_pycold/config.yaml"   # the path of your parameter yaml
 data_dir="/shared/cn449/DataLandsatARDCONUS"
 
 source_path="$data_dir/h${h}v${v}"

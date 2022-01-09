@@ -12,7 +12,7 @@ method="COLD"
 reccg_path="/scratch/your_scratch_folder/h${h}v${v}_results"
 reference_path="/home/your_home_folder/lcmap_lc2001/LCMAP_CU_2001_V01_LCPRI_${h}${v}.tif"
 out_path="/scratch/your_scratch_folder/h${h}v${v}_results"
-yaml_path="/home/your_home_folder/Document/uconn_hpc_pycold/parameters.yaml"
+yaml_path="/home/your_home_folder/Document/uconn_hpc_pycold/config.yaml"
 
 
 
