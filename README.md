@@ -1,4 +1,4 @@
-# UCONN_HPC_PYCOLD
+# pycold-uconnhpc
 
 # A script repo for applying pycold package in UCONN HPC environment
 ### Author: Su Ye (remotesensingsuy@gmail.com)
@@ -77,7 +77,7 @@ conda activate pycold_py37
 install requirements
 
 ```
-pip install -r requirements.txt
+pip install --file requirements.txt
 pip install -e .
 # have to install gdal separately using conda, no better solution so far
 conda install gdal
@@ -101,11 +101,13 @@ import pycold
 
 ## Step 3: uconn_hpc_pycold package for production
 
-Clone:
+Clone and install requirements:
 
 ```
 git clone https://github.com/GERSL/uconn_hpc_pycold/uconn_hpc_pycold.git
 cd uconn_hpc_pycold
+conda activate pycold_py37
+conda install --file requirements.txt
 ```
 
 #### config.yaml
@@ -157,6 +159,7 @@ v="009"    # the v id of your ard tile
 working_dir="/scratch/your_scratch_folder"   # the place to save the result folder
 yaml_path="/home/your_home_folder/uconn_hpc_pycold/config.yaml"   # the path of your config yaml
 ```
+To use Object-based COLD, just add --method='OB-COLD' into the end of 'python3 pycold_workflow.py ...' line. The program will generate an additional folder ('cm_maps') to change magnitude, direction and date snapshots 
 
 This process typically took 1-1.5 hours to finish (200 cores, skylake or EpycPriority nodes); you will see a folder named 'h * v * _results' created in working_dir.
 

@@ -11,7 +11,6 @@
 # files, and takes ~12 mins to finish if 200 EPYC 7452 cores are used.
 
 import warnings
-warnings.filterwarnings("ignore")
 import os
 from osgeo import gdal_array
 import numpy as np
@@ -30,6 +29,7 @@ import xml.etree.ElementTree as ET
 import yaml
 import pandas as pd
 from os.path import isfile, join, isdir
+warnings.filterwarnings("ignore")
 
 # define constant here
 QA_CLEAR = 0
