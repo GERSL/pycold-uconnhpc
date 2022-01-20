@@ -168,7 +168,7 @@ def main(reccg_path, reference_path, out_path, method, year_lowbound, year_uppbo
                 current_processing_pos = curve['pos']
                 current_dist_type = 0
 
-            if curve['change_prob'] < 100 or curve['t_break'] == 0:  # last segment
+            if curve['change_prob'] < 100 or curve['t_break'] == 0 or count == (len(cold_block) - 1):  # last segment
                 continue
 
             i_col = int((curve["pos"] - 1) % config['n_cols']) - \

@@ -1,8 +1,8 @@
 pandas >= 0.24.1
 click >= 7.1.1
-gdal >= 2.1.0
+# gdal >= 2.1.0
 numpy >= 1.19.2
-yaml >= 0.2.5
+pyyaml >= 0.2.5
 scipy >= 1.5.2
 mpi4py >= 3.0.3
 pytz >= 0.0

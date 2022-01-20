@@ -17,65 +17,11 @@ import click
 import time
 from pycold import cold_detect
 from scipy.stats import chi2
-from utils import get_rowcol_intile, get_time_now, get_doy
+from pycold.utils import get_rowcol_intile, get_doy, assemble_cmmaps
+from pycold.utils import get_block_y, get_block_x, read_blockdata
 
-TOTAL_IMAGE_BANDS = 7
+STACK_BAND_NUM = 8
 NAN_VAL = -9999
-
-
-def assemble_cmmaps(config, result_path, cmmap_path, starting_date, n_cm_maps, keyword):
-    """
-    this function reorganized block-based fix-interval CM intermediate files into map-based output (one map per interval)
-    Parameters
-    ----------
-    config: dictionary
-        pycold config dictionary
-    result_path: string
-        the path where block-based CM intermediate files are
-    cmmap_path: string
-        the path to save the new map-based output
-    starting_date: integer
-        the starting date of the dataset
-    n_cm_maps: integer
-        the number of change magnitude outputted per pixel
-    keyword: {'CM', 'CM_date', 'CM_direction'}
-    Returns
-    -------
-
-    """
-    if keyword == 'CM':
-        output_type = np.int16
-    elif keyword == 'CM_date':
-        output_type = np.int32
-    elif keyword == 'CM_direction':
-        output_type = np.uint8
-
-    cm_map_list = [np.full((config['n_rows'], config['n_cols']),
-                           NAN_VAL, dtype=output_type) for x in range(n_cm_maps)]
-    for iblock in range(config['n_blocks']):
-        current_block_y = int(np.floor(iblock / config['n_block_x'])) + 1
-        current_block_x = iblock % config['n_block_y'] + 1
-        try:
-            cm_block = np.load(join(result_path, '{}_x{}_y{}.npy'.format(keyword, current_block_x, current_block_y)))
-        except OSError as e:
-            print('Reading CM files fails: {}'.format(e))
-        #    continue
-
-        cm_block_reshape = np.reshape(cm_block, (config['block_width'] * config['block_height'],
-                                                 n_cm_maps))
-        hori_profile = np.hsplit(cm_block_reshape, n_cm_maps)
-        for count, maps in enumerate(cm_map_list):
-            maps[(current_block_y - 1) * config['block_height']:current_block_y * config['block_height'],
-            (current_block_x - 1) * config['block_width']:current_block_x * config['block_width']] = \
-                hori_profile[count].reshape(config['block_height'], config['block_width'])
-
-    # output cm images
-    for count, cm_map in enumerate(cm_map_list):
-        ordinal_date = starting_date + count * config['CM_OUTPUT_INTERVAL']
-        outfile = join(cmmap_path, '{}_maps_{}_{}{}.npy'.format(keyword, str(ordinal_date),
-                                                                pd.Timestamp.fromordinal(ordinal_date - 366).year,
-                                                                get_doy(ordinal_date)))
-        np.save(outfile, cm_map)
 
 
 def tileprocessing_report(result_log_path, stack_path, version, algorithm, config, startpoint, tz):
@@ -259,34 +205,23 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method):
         exit()
 
     nblock_eachcore = int(np.ceil(config['n_block_x'] * config['n_block_y'] * 1.0 / n_cores))
+
+    #######################################################################################
+    #                     Step 1: temporal analysis - COLD algorithm                      #
+    #######################################################################################
     for i in range(nblock_eachcore):
         block_id = n_cores * i + rank  # from 1 to 200, if 200 cores
         if block_id > config['n_block_x'] * config['n_block_y']:
             break
-
-        block_y = int((block_id - 1) / config['n_block_x']) + 1  # note that block_x and block_y start from 1
-        block_x = int((block_id - 1) % config['n_block_x']) + 1
-
         # skip the block if the change record block has been created
         if os.path.exists(join(result_path, 'COLD_block{}_finished.txt'.format(block_id))):
             continue
 
+        block_y = get_block_x(block_id, config['n_block_x'])
+        block_x = get_block_y(block_id, config['n_block_x'])
         block_folder = join(stack_path, 'block_x{}_y{}'.format(block_x, block_y))
-
-        img_files = [f for f in os.listdir(block_folder) if f.startswith('L')]
-
-        # sort image files by dates
-        img_dates = [pd.Timestamp.toordinal(dt.datetime(int(folder_name[9:13]), 1, 1) +
-                                            dt.timedelta(int(folder_name[13:16]) - 1)) + 366
-                     for folder_name in img_files]
-        files_date_zip = sorted(zip(img_dates, img_files))
-        img_files_sorted = [x[1] for x in files_date_zip]
-        img_dates_sorted = np.asarray([x[0] for x in files_date_zip])
-        img_tstack = [np.load(join(block_folder, f)).reshape(config['block_width'] * config['block_height'],
-                                                             TOTAL_IMAGE_BANDS + 1)
-                      for f in img_files_sorted]
-        img_tstack = np.dstack(img_tstack)
-
+        img_stack, img_dates_sorted = read_blockdata(block_folder, config['block_width'] * config['block_height'],
+                                                     STACK_BAND_NUM)
         # initialize a list (may better change it to generator for future)
         result_collect = []
         CM_collect = []
@@ -300,14 +235,14 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method):
             try:
                 if b_outputCM:
                     [cold_result, CM, CM_direction, CM_date] = cold_detect(img_dates_sorted,
-                                                                           img_tstack[pos, 0, :].astype(np.int64),
-                                                                           img_tstack[pos, 1, :].astype(np.int64),
-                                                                           img_tstack[pos, 2, :].astype(np.int64),
-                                                                           img_tstack[pos, 3, :].astype(np.int64),
-                                                                           img_tstack[pos, 4, :].astype(np.int64),
-                                                                           img_tstack[pos, 5, :].astype(np.int64),
-                                                                           img_tstack[pos, 6, :].astype(np.int64),
-                                                                           img_tstack[pos, 7, :].astype(np.int64),
+                                                                           img_stack[pos, 0, :].astype(np.int64),
+                                                                           img_stack[pos, 1, :].astype(np.int64),
+                                                                           img_stack[pos, 2, :].astype(np.int64),
+                                                                           img_stack[pos, 3, :].astype(np.int64),
+                                                                           img_stack[pos, 4, :].astype(np.int64),
+                                                                           img_stack[pos, 5, :].astype(np.int64),
+                                                                           img_stack[pos, 6, :].astype(np.int64),
+                                                                           img_stack[pos, 7, :].astype(np.int64),
                                                                            pos=config['n_cols'] * (original_row - 1) +
                                                                            original_col,
                                                                            conse=config['conse'],
@@ -317,14 +252,14 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method):
                                                                            b_output_cm=b_outputCM)
                 else:
                     cold_result = cold_detect(img_dates_sorted,
-                                              img_tstack[pos, 0, :].astype(np.int64),
-                                              img_tstack[pos, 1, :].astype(np.int64),
-                                              img_tstack[pos, 2, :].astype(np.int64),
-                                              img_tstack[pos, 3, :].astype(np.int64),
-                                              img_tstack[pos, 4, :].astype(np.int64),
-                                              img_tstack[pos, 5, :].astype(np.int64),
-                                              img_tstack[pos, 6, :].astype(np.int64),
-                                              img_tstack[pos, 7, :].astype(np.int64),
+                                              img_stack[pos, 0, :].astype(np.int64),
+                                              img_stack[pos, 1, :].astype(np.int64),
+                                              img_stack[pos, 2, :].astype(np.int64),
+                                              img_stack[pos, 3, :].astype(np.int64),
+                                              img_stack[pos, 4, :].astype(np.int64),
+                                              img_stack[pos, 5, :].astype(np.int64),
+                                              img_stack[pos, 6, :].astype(np.int64),
+                                              img_stack[pos, 7, :].astype(np.int64),
                                               t_cg=threshold,
                                               conse=config['conse'],
                                               pos=config['n_cols'] * (original_row - 1) + original_col)
@@ -362,23 +297,16 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method):
         if rank == 1:
             logger.info("The per-pixel COLD algorithm ends and starts assembling CM files: {}"
                         .format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
-            # assemble_cmmaps(config, result_path, join(result_path, 'cm_maps'), starting_date, n_cm_maps, 'CM')
-            tmp_filenames = [file for file in os.listdir(result_path)
-                                         if file.startswith('CM_x')]
-            for file in tmp_filenames:
-                os.remove(join(result_path, file))
+            assemble_cmmaps(config, result_path, join(result_path, 'cm_maps'), starting_date, n_cm_maps, 'CM',
+                            clean=True)
         elif rank == 2:
-            assemble_cmmaps(config, result_path, join(result_path, 'cm_maps'), starting_date, n_cm_maps, 'CM_direction')
-            tmp_filenames = [file for file in os.listdir(result_path)
-                             if file.startswith('CM_direction')]
-            for file in tmp_filenames:
-                os.remove(join(result_path, file))
+            assemble_cmmaps(config, result_path, join(result_path, 'cm_maps'), starting_date, n_cm_maps, 'CM_direction',
+                            clean=True)
+
         elif rank == 3:
-            assemble_cmmaps(config, result_path, join(result_path, 'cm_maps'), starting_date, n_cm_maps, 'CM_date')
-            tmp_filenames = [file for file in os.listdir(result_path)
-                             if file.startswith('CM_date')]
-            for file in tmp_filenames:
-                os.remove(join(result_path, file))
+            assemble_cmmaps(config, result_path, join(result_path, 'cm_maps'), starting_date, n_cm_maps, 'CM_date',
+                            clean=True)
+
         else:
             while not is_finished_assemble_cmmaps(join(result_path, 'cm_maps'), n_cm_maps,
                                                   starting_date, config['CM_OUTPUT_INTERVAL']):
