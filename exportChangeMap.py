@@ -148,16 +148,24 @@ def main(reccg_path, reference_path, out_path, method, year_lowbound, year_uppbo
             filename = 'record_change_x{}_y{}_obcold.npy'.format(current_block_x, current_block_y)
         else:
             filename = 'record_change_x{}_y{}_cold.npy'.format(current_block_x, current_block_y)
-        cold_block = np.array(np.load(os.path.join(reccg_path, filename)), dtype=dt)
-        # cold_block = [np.array(element, dtype=dt) for element in cold_block]
+
         results_block = [np.full((config['block_height'], config['block_width']), -9999, dtype=np.int32)
                          for t in range(year_uppbound - year_lowbound + 1)]
-        if len(cold_block) == 0:
-            print('the rec_cg file {} is missing'.format(dat_pth))
+        if not os.path.exists(os.path.join(reccg_path, filename)):
+            print('the rec_cg file {} is missing'.format(os.path.join(reccg_path, filename)))
             for year in range(year_lowbound, year_uppbound+1):
                 outfile = os.path.join(out_path, 'tmp_map_block{}_{}.npy'.format(iblock + 1, year))
                 np.save(outfile, results_block[year - year_lowbound])
             continue
+
+        cold_block = np.array(np.load(os.path.join(reccg_path, filename)), dtype=dt)
+        # cold_block = [np.array(element, dtype=dt) for element in cold_block]
+        # if len(cold_block) == 0:
+        #     print('the rec_cg file {} is missing'.format(dat_pth))
+        #     for year in range(year_lowbound, year_uppbound+1):
+        #         outfile = os.path.join(out_path, 'tmp_map_block{}_{}.npy'.format(iblock + 1, year))
+        #         np.save(outfile, results_block[year - year_lowbound])
+        #     continue
 
         cold_block.sort(order='pos')
 
