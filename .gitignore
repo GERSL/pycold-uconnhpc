@@ -7,3 +7,4 @@ slurm*
 submit_AutoPrepareDataARD.sh
 submit_exportChangeMap.sh
 submit_pycold_workflow.sh
+usgs_downloader/submit_usgs_downloader.sh

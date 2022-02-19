@@ -1,14 +1,13 @@
 # pycold-uconnhpc
 
 # A script repo for applying pycold package in UCONN HPC environment
-
 ### Author: Su Ye (remotesensingsuy@gmail.com)
 
 ## Before you use....
 
-I am a big fan of conda because it is always easier to install pre-compiled than compiling everything from sources, while I did see many people prefer pip than conda for its high-level flexibility and to pursue the most up-to-date package version. I did encounter package conflict issues when I mixed using conda and pip. So to guarantee everything working in UCONN HPC, I sugggest using pip install consistently, except for using conda to set up virtual environment and install gdal (see the below details).
+I am a big fan of conda because it is always easier to install pre-compiled than compiling everything from sources (especially for gdal library), while I did see many people prefer pip than conda for its high-level flexibility. The below are only based on my experience with conda. At least, it worked.
 
-If you are Window system user and choose python as your primary programming language, you may consider choosing Cygwin terminal (https://www.cygwin.com/), as other GUI-based terminals such as MobaXterm may have issues with Jupyter notebook connection.  CLI-based terminal often incorporates many modern computing tools such as git and conda so that you don't need to switch terminals, while GUI-based may be more native to window users. It is up to you.
+If you are Window system user and choose python as your primary programming language, Cygwin terminal (https://www.cygwin.com/) is recommended, as other window-based terminals such as Mobabus may have issues with Jupyter notebook connection.  Another advantage of using CLI-based terminal than GUI-based is CLI-based terminal often incorporates many useful softwares such as git and conda, where you can better keep up with modern computational technology. 
 
 ## Step 1: locally install conda
 
@@ -58,30 +57,10 @@ conda activate pycold_py37
 
 ## Step 2: install pycold
 
-Again you need to request an interative node if you are in login node. UCONN HPC set http restriction for login node, so you can't get access to github (which is annoying!).
+clone repo from our lab github page (assuming you are still in the interactive model, and git can't be supported in the login node)
 
 ```
-fisbatch -n 6 --partition=EpycPriority --nodelist=cn449 --account=zhz18039
-```
-
-If you haven't set up your GitHub account in HPC, please set up the configuration first. 
-
-```
-config --global user.name "SuYe99"   # put your username
-```
-
-You also need to generate your personal token, and github doesn't accept password since 2021. You can check the steps in [personal token steps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token). After your generating the token, copy your token to the place that you store keys.
-
-Before you started cloning, first put the below line so that you just need to put your username and token for one time, and no need for future.
-
-```
-git config --global credential.helper store
-```
-
-clone repo from our lab github page, and it should prompt username and password (i.e., token) request as your first time set-up 
-
-```
-git clone https://github.com/GERSL/pycold.git
+git clone https://github.com/GERSL/pycold/pycold.git
 ```
 
 cd to the repo, load all essential modules and activate pycold environment
@@ -98,8 +77,10 @@ conda activate pycold_py37
 install requirements
 
 ```
-pip install --r requirements.txt
+pip install -r requirements.txt
 pip install -e .
+# have to install gdal separately using conda, no better solution so far
+conda install gdal
 ```
 
 install pycold in development mode (The benefit you get from developers mode is that when you make a change to Python code, you see that change immediately when you rerun the program )
@@ -114,13 +95,7 @@ A quick test using python console
 import pycold
 ```
 
-** Note that the pycold can be only successfully installed in OCX and Linux platform. I encounterred a compiler issue in the Window system, and will work on Window platform later this year.
-
-#### (optional) update your local repo only when pycold is updated in the remote
-
-```
-git pull -f  
-```
+** Note that the pycold can be only successfully installed in OCX and Linux platform temporally. I encounterred a compiler issue in the Window system, and will work on Window platform later this year.
 
 
 
@@ -129,12 +104,10 @@ git pull -f
 Clone and install requirements:
 
 ```
-git clone https://github.com/GERSL/pycold-uconnhpc.git
+git clone https://github.com/GERSL/uconn_hpc_pycold/uconn_hpc_pycold.git
 cd uconn_hpc_pycold
 conda activate pycold_py37
-pip install --r requirements.txt
-# have to install gdal separately using conda, no better solution so far
-conda install gdal
+conda install --file requirements.txt
 ```
 
 #### config.yaml
@@ -187,8 +160,6 @@ working_dir="/scratch/your_scratch_folder"   # the place to save the result fold
 yaml_path="/home/your_home_folder/uconn_hpc_pycold/config.yaml"   # the path of your config yaml
 ```
 
-To use Object-based COLD, just add --method='OB-COLD' into the end of 'python3 pycold_workflow.py ...' line. The program will generate an additional folder ('cm_maps') for change magnitude, direction and date snapshots 
-
 This process typically took 1-1.5 hours to finish (200 cores, skylake or EpycPriority nodes); you will see a folder named 'h * v * _results' created in working_dir.
 
 #### submit_exportChangeMap_template.sh 
@@ -214,7 +185,7 @@ A script that does stacking and COLD in a sequence:
 
 Other notes:
 
-* After you change the above files for the first time, you only need to change 'h' and 'v' for the next time to point to your interested tiles, so it would be much easier to use after the first configuration was finished.
+* After you change the above files for the first time, you only need to change 'h' and 'v' for the next time to point to your interested tiles, so it is very easy to use.
 
 * Feel free to add '\#SBATCH --mail-user=' into the slurm files if you want to receive email notification.
 

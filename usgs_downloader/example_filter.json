@@ -1,0 +1,19 @@
+{
+	"spatialFilter":
+	{
+		"filterType": "mbr",
+		"lowerLeft": { "latitude": 43.25, "longitude": 117.5 },
+		"upperRight": { "latitude": 43.25, "longitude": 117.5 }
+	},
+	"acquisitionFilter":
+	{
+		"start": "1982-1-1",
+		"end": "2021-12-31"
+	},
+    "cloudCoverFilter":
+    {
+        "min": 0,
+        "max": 100
+    }
+    
+}
