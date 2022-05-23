@@ -53,5 +53,5 @@ def get_doy(ordinal_date):
     -------
     doy
     """
-    return str(pd.Timestamp.fromordinal(ordinal_date-366).timetuple().tm_yday).zfill(3)
+    return str(pd.Timestamp.fromordinal(ordinal_date).timetuple().tm_yday).zfill(3)
 

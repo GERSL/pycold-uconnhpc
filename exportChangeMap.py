@@ -72,7 +72,7 @@ def main(reccg_path, reference_path, out_path, method, year_lowbound, year_uppbo
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     n_process = comm.Get_size()
-    bias = 366
+    bias = 0
     if method == 'OBCOLD':
         reccg_path = os.path.join(reccg_path, 'obcold')
         out_path = os.path.join(out_path, 'obcold_maps')
@@ -192,7 +192,7 @@ def main(reccg_path, reference_path, out_path, method, year_lowbound, year_uppbo
                 current_dist_type = getcategory_obcold(cold_block, count, current_dist_type)
             else:
                 current_dist_type = getcategory_cold(cold_block, count)
-            break_year = pd.Timestamp.fromordinal(curve['t_break'] - 366).year
+            break_year = pd.Timestamp.fromordinal(curve['t_break']).year
             if break_year < year_lowbound or break_year > year_uppbound:
                 continue
             results_block[break_year - year_lowbound][i_row][i_col] = current_dist_type * 1000 + curve['t_break'] - \
@@ -243,6 +243,24 @@ def main(reccg_path, reference_path, out_path, method, year_lowbound, year_uppbo
         outdriver1 = gdal.GetDriverByName("GTiff")
         outdata = outdriver1.Create(outfile, rows, cols, 1, gdal.GDT_Int16)
         outdata.GetRasterBand(1).WriteArray(recent_dist)
+        outdata.FlushCache()
+        outdata.SetGeoTransform(trans)
+        outdata.FlushCache()
+        outdata.SetProjection(proj)
+        outdata.FlushCache()
+
+        first_dist = np.full((config['n_rows'], config['n_cols']), 0, dtype=np.int16)
+        for year in range(year_uppbound, year_lowbound - 1, -1):
+            mode_string = str(year) + '_break_map'
+            outname = '{}_{}.tif'.format(mode_string, method)
+            breakmap = gdal_array.LoadFile(os.path.join(out_path, outname))
+            first_dist[(breakmap / 1000).astype(np.byte) == 1] = year
+        mode_string = 'first_disturbance_map'
+        outname = '{}_{}.tif'.format(mode_string, method)
+        outfile = os.path.join(out_path, outname)
+        outdriver1 = gdal.GetDriverByName("GTiff")
+        outdata = outdriver1.Create(outfile, rows, cols, 1, gdal.GDT_Int16)
+        outdata.GetRasterBand(1).WriteArray(first_dist)
         outdata.FlushCache()
         outdata.SetGeoTransform(trans)
         outdata.FlushCache()

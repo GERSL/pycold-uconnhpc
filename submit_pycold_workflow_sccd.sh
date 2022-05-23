@@ -11,13 +11,19 @@
 #SBATCH --array 1-200
 #SBATCH --mail-type=END                              # Event(s) that triggers email notification (BEGIN,END,FAIL,ALL)
 ##SBATCH --exclude=cn[66-69,71-136,325-328,376]
-#SBATCH --exclude=cn355,cn406,cn217,cn373,cn67,cn87,cn376,cn68,cn116,cn449
+#SBATCH --exclude=cn355,cn406,cn217,cn373,cn67,cn87,cn376,cn68,cn116,cn338,cn330,cn398,cn346,cn364,cn368 
 
 
-stack_path="/scratch/suy20004/suy20004/p194r055_stack"
-result_path="/scratch/suy20004/suy20004/p194r055_results"
+h="030"
+v="006"
+data_dir="/shared/cn449/DataLandsatARDCONUS"
+working_dir="/scratch/suy20004/suy20004"
 yaml_path="/home/suy20004/Document/pycold-uconnhpc/config.yaml"
-seedmap_path="/scratch/suy20004/suy20004/africa/globalandoverlaid.tif"
+
+source_path="$data_dir/h${h}v${v}"
+stack_path="$working_dir/h${h}v${v}_stack"
+result_path="$working_dir/h${h}v${v}_sccdresults"
+seedmap_path="/home/suy20004/lcmap_lc2001/LCMAP_CU_2001_V01_LCPRI_${h}${v}.tif"
 
 module purge
 # load commonly-used module
@@ -28,4 +34,4 @@ module load gsl/2.4
 
 source /home/suy20004/miniconda3/etc/profile.d/conda.sh
 conda activate pycold_py37
-python3 pycold_workflow.py --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --result_path=$result_path --stack_path=$stack_path --yaml_path=$yaml_path --method='OBCOLD' --seedmap_path=$seedmap_path
+python3 pycold_workflow.py --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --result_path=$result_path --seedmap_path=$seedmap_path --stack_path=$stack_path --yaml_path=$yaml_path --method='SCCDOFFLINE' --upper_datebound=737790

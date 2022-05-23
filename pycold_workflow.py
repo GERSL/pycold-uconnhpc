@@ -1,8 +1,8 @@
 # This script is an example for running pyscold in UCONN job array environment
 # Due to the independence features of job array, we use writing disk files for communication
-# Three types of logging files are used: 1) print() to save block-based  processing info into individual slurm file;
-# 2) system.log is mainly used to log runtime information; 3) tile_processing_report.log records config for each tile
-# 2) and 3) are only called when rank == 1
+# Two types of logging files are used: 1) print() to save block-based  processing info into individual slurm file;
+# 2) tile_processing_report.log records config for each tile
+# 2) is only called when rank == 1
 import yaml
 import os
 from os.path import join
@@ -15,19 +15,20 @@ from datetime import datetime
 from pytz import timezone
 import click
 import time
-from pycold import cold_detect
+from pycold import cold_detect, sccd_detect
 from scipy.stats import chi2
 from utils import get_rowcol_intile, get_time_now, get_doy
 from pycold.utils import assemble_cmmaps
 from pycold.ob_analyst import ObjectAnalystHPC
 from pycold.pyclassifier import PyClassifierHPC
 from pycold.app import defaults
+import pickle
 
 TOTAL_IMAGE_BANDS = 7
 NAN_VAL = -9999
 
 
-def tileprocessing_report(result_log_path, stack_path, version, algorithm, config, startpoint, tz,
+def tileprocessing_report(result_log_path, stack_path, version, algorithm, config, startpoint, cold_timepoint, tz,
                           starting_date=0, n_cm_maps=0, year_lowbound=0, year_uppbound=0):
     """
     output tile-based processing report
@@ -60,6 +61,7 @@ def tileprocessing_report(result_log_path, stack_path, version, algorithm, confi
     file.write("Conse: {}\n".format(config['conse']))
     file.write("stack_path: {}\n".format(stack_path))
     file.write("The program starts at {}\n".format(startpoint.strftime('%Y-%m-%d %H:%M:%S')))
+    file.write("The COLD ends at {}\n".format(cold_timepoint.strftime('%Y-%m-%d %H:%M:%S')))
     file.write("The program ends at {}\n".format(endpoint.strftime('%Y-%m-%d %H:%M:%S')))
     file.write("The program lasts for {:.2f}mins\n".format((endpoint - startpoint) / dt.timedelta(minutes=1)))
     if algorithm == 'OBCOLD':
@@ -150,31 +152,32 @@ def is_finished_assemble_cmmaps(cmmap_path, n_cm, starting_date, cm_interval):
         ordinal_date = starting_date + count * cm_interval
         if not os.path.exists(join(cmmap_path,
                                    'CM_maps_{}_{}{}.npy'.format(str(ordinal_date),
-                                                                pd.Timestamp.fromordinal(ordinal_date-366).year,
+                                                                pd.Timestamp.fromordinal(ordinal_date).year,
                                                                 get_doy(ordinal_date)))):
             return False
         if not os.path.exists(join(cmmap_path,
                                    'CM_date_maps_{}_{}{}.npy'.format(str(ordinal_date),
-                                                                     pd.Timestamp.fromordinal(ordinal_date-366).year,
+                                                                     pd.Timestamp.fromordinal(ordinal_date).year,
                                                                      get_doy(ordinal_date)))):
-            return False
-        if not os.path.exists(join(cmmap_path,
-                                   'CM_direction_maps_{}_{}{}.npy'.format(str(ordinal_date),
-                                                                          pd.Timestamp.fromordinal(ordinal_date-366).year,
-                                                                          get_doy(ordinal_date)))):
             return False
     return True
 
 
-def get_stack_date(config, block_x, block_y, stack_path):
+def get_stack_date(config, block_x, block_y, stack_path, low_datebound=0, high_datebound=0):
     block_folder = join(stack_path, 'block_x{}_y{}'.format(block_x, block_y))
     img_files = [f for f in os.listdir(block_folder) if f.startswith('L')]
     if len(img_files) == 0:
         return None, None
     # sort image files by dates
     img_dates = [pd.Timestamp.toordinal(dt.datetime(int(folder_name[9:13]), 1, 1) +
-                                        dt.timedelta(int(folder_name[13:16]) - 1)) + 366
+                                        dt.timedelta(int(folder_name[13:16]) - 1))
                  for folder_name in img_files]
+    if low_datebound > 0:
+        img_dates, img_files = zip(*filter(lambda x: x[0] >= low_datebound,
+                                           zip(img_dates, img_files)))
+    if high_datebound > 0:
+        img_dates, img_files = zip(*filter(lambda x: x[0] <= high_datebound,
+                                           zip(img_dates, img_files)))
     files_date_zip = sorted(zip(img_dates, img_files))
     img_files_sorted = [x[1] for x in files_date_zip]
     img_dates_sorted = np.asarray([x[0] for x in files_date_zip])
@@ -193,7 +196,9 @@ def get_stack_date(config, block_x, block_y, stack_path):
 @click.option('--yaml_path', type=str, default=None, help='YAML path')
 @click.option('--seedmap_path', type=str, default=None, help='an existing label map path; none means not using thematic info')
 @click.option('--method', type=click.Choice(['COLD', 'OBCOLD', 'SCCDOFFLINE']), help='COLD, OBCOLD, SCCD-OFFLINE')
-def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path):
+@click.option('--low_datebound', type=int, default=0, help='low date bound of image selection for processing')
+@click.option('--upper_datebound', type=int, default=0, help='upper date bound of image selection for processing')
+def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path, low_datebound, upper_datebound):
     tz = timezone('US/Eastern')
     start_time = datetime.now(tz)
 
@@ -215,9 +220,10 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
         # we need read 'global starting date' to save CM which will be only used for ob-cold
         try:
             starting_date, n_cm_maps = reading_start_dates_nmaps(stack_path, config['CM_OUTPUT_INTERVAL'])
-            year_lowbound = pd.Timestamp.fromordinal(starting_date - 366).year
-            year_uppbound = pd.Timestamp.fromordinal(starting_date - 366 + (n_cm_maps-1)*config['CM_OUTPUT_INTERVAL']).year
+            year_lowbound = pd.Timestamp.fromordinal(starting_date).year
+            year_uppbound = pd.Timestamp.fromordinal(starting_date + (n_cm_maps-1)*config['CM_OUTPUT_INTERVAL']).year
         except IOError as e:
+            print("reading start dates errors: {}".format(start_time.strftime('%Y-%m-%d %H:%M:%S')))
             exit()
 
     # logging and folder preparation
@@ -227,16 +233,10 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
         if method == 'OBCOLD':
             if not os.path.exists(join(result_path, 'cm_maps')):
                 os.makedirs(join(result_path, 'cm_maps'))
-        # system logging
-        logging.basicConfig(filename='{}/system.log'.format(result_path),
-                            filemode='w', level=logging.INFO)
-        logger_system = logging.getLogger(__name__)
-
-        logger_system.info("The per-pixel COLD algorithm begins: {}".format(start_time.strftime('%Y-%m-%d %H:%M:%S')))
+        print("The per-pixel COLD algorithm begins: {}".format(start_time.strftime('%Y-%m-%d %H:%M:%S')))
 
         if not os.path.exists(stack_path):
-            logger_system.error("Failed to locate stack folders. The program ends: {}"
-                         .format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
+            print("Failed to locate stack folders. The program ends: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
             return
 
     #########################################################################
@@ -254,19 +254,18 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
             print("Per-pixel COLD processing is finished for block_x{}_y{} ({})".format(block_x, block_y, 
                                                                                         datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
             continue
-        img_tstack, img_dates_sorted = get_stack_date(config, block_x, block_y, stack_path)
+        img_tstack, img_dates_sorted = get_stack_date(config, block_x, block_y, stack_path, low_datebound,
+                                                      upper_datebound)
 
         # initialize a list (may better change it to generator for future)
         result_collect = []
         CM_collect = []
-        direction_collect = []
         date_collect = []
 
         if img_tstack is None:   # empty block
             if method == 'OBCOLD':
                 for pos in range(config['block_width'] * config['block_height']):
                     CM_collect.append(np.full(n_cm_maps, -9999, dtype=np.short))
-                    direction_collect.append(np.full(n_cm_maps, 255, dtype=np.uint8))
                     date_collect.append(np.full(n_cm_maps, 255, dtype=np.uint8))
         else:
             # start looping every pixel in the block
@@ -275,7 +274,7 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
                                                                config['block_height'], block_x, block_y)
                 try:
                     if method == 'OBCOLD':
-                        [cold_result, CM, CM_direction, CM_date] = cold_detect(img_dates_sorted,
+                        [cold_result, CM, CM_date] = cold_detect(img_dates_sorted,
                                                                                img_tstack[pos, 0, :].astype(np.int64),
                                                                                img_tstack[pos, 1, :].astype(np.int64),
                                                                                img_tstack[pos, 2, :].astype(np.int64),
@@ -291,6 +290,18 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
                                                                                n_cm=n_cm_maps,
                                                                                cm_output_interval=config['CM_OUTPUT_INTERVAL'],
                                                                                b_output_cm=True)
+                    elif method == "SCCDOFFLINE":
+                        cold_result = sccd_detect(img_dates_sorted,
+                                                  img_tstack[pos, 0, :].astype(np.int64),
+                                                  img_tstack[pos, 1, :].astype(np.int64),
+                                                  img_tstack[pos, 2, :].astype(np.int64),
+                                                  img_tstack[pos, 3, :].astype(np.int64),
+                                                  img_tstack[pos, 4, :].astype(np.int64),
+                                                  img_tstack[pos, 5, :].astype(np.int64),
+                                                  img_tstack[pos, 6, :].astype(np.int64),
+                                                  img_tstack[pos, 7, :].astype(np.int64),
+                                                  t_cg=threshold,
+                                                  pos=config['n_cols'] * (original_row - 1) + original_col)
                     else:
                         cold_result = cold_detect(img_dates_sorted,
                                                   img_tstack[pos, 0, :].astype(np.int64),
@@ -311,23 +322,26 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
                 except Exception as e:
                     if method == 'OBCOLD':
                         CM = np.full(n_cm_maps, -9999, dtype=np.short)
-                        CM_direction = np.full(n_cm_maps, 255, dtype=np.uint8)
                         CM_date = np.full(n_cm_maps, 255, dtype=np.uint8)
                 else:
                     result_collect.append(cold_result)
                 finally:
                     if method == 'OBCOLD':
                         CM_collect.append(CM)
-                        direction_collect.append(CM_direction)
                         date_collect.append(CM_date)
 
         # save the dataset
-        if len(result_collect) > 0:
-            np.save(join(result_path, 'record_change_x{}_y{}_cold.npy'.format(block_x, block_y)), np.hstack(result_collect))
+        if method == "SCCDOFFLINE":
+            if len(result_collect) > 0:
+                f = open(join(result_path, 'record_change_x{}_y{}_sccd'.format(block_x, block_y)),"wb")
+                pickle.dump(np.hstack(result_collect), f)
+                f.close()
+        else:
+            if len(result_collect) > 0:
+                np.save(join(result_path, 'record_change_x{}_y{}_cold.npy'.format(block_x, block_y)), np.hstack(result_collect))
 
         if method == 'OBCOLD':
             np.save(join(result_path, 'CM_date_x{}_y{}.npy'.format(block_x, block_y)), np.hstack(date_collect))
-            np.save(join(result_path, 'CM_direction_x{}_y{}.npy'.format(block_x, block_y)), np.hstack(direction_collect))
             np.save(join(result_path, 'CM_x{}_y{}.npy'.format(block_x, block_y)), np.hstack(CM_collect))
 
         with open(join(result_path, 'COLD_block{}_finished.txt'.format(block_id)), 'w') as fp:
@@ -340,7 +354,8 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
     while not is_finished_cold_blockfinished(result_path, config['n_block_x'] * config['n_block_y']):
         time.sleep(15)
     if rank == 1:
-        logger_system.info("The per-pixel COLD algorithm ends: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
+        cold_timepoint = datetime.now(tz)
+        print("The per-pixel COLD algorithm ends: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
 
     #################################################################################
     #                        the below is object-based process                      #
@@ -354,7 +369,12 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
                                            year_uppbound=year_uppbound, seedmap_path=seedmap_path)
             ob_analyst = ObjectAnalystHPC(config, starting_date=starting_date, stack_path=stack_path,
                                           result_path=result_path, thematic_path=join(result_path, 'feature_maps'))
-
+        if rank == 1:
+            # need to create folders first
+            if seedmap_path is not None:
+                pyclassifier.hpc_preparation()
+            ob_analyst.hpc_preparation()
+        
         #########################################################################
         #                        reorganize cm snapshots                        #
         #########################################################################
@@ -362,17 +382,8 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
         if not is_finished_assemble_cmmaps(join(result_path, 'cm_maps'), n_cm_maps,
                                            starting_date, config['CM_OUTPUT_INTERVAL']):
             if rank == 1:
-                # need to create folders first
-                if seedmap_path is not None:
-                    pyclassifier.hpc_preparation()
-                ob_analyst.hpc_preparation()
-                logger_system.info("Starts assembling CM files: {}"
-                            .format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
                 assemble_cmmaps(config, result_path, join(result_path, 'cm_maps'), starting_date, n_cm_maps, 'CM', clean=False)
             elif rank == 2:
-                assemble_cmmaps(config, result_path, join(result_path, 'cm_maps'), starting_date, n_cm_maps, 'CM_direction',
-                                clean=False)
-            elif rank == 3:
                 assemble_cmmaps(config, result_path, join(result_path, 'cm_maps'), starting_date, n_cm_maps, 'CM_date',
                                 clean=False)
 
@@ -385,14 +396,16 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
         #########################################################################
         if seedmap_path is not None:  # we used thematic info
             if not pyclassifier.is_finished_step4_assemble():
+                if rank == 1:
+                    print("Starts predicting features: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
                 for i in range(nblock_eachcore):
                     if n_cores * i + rank > config['n_block_x'] * config['n_block_y']:
                         break
                     pyclassifier.step1_feature_generation(block_id=n_cores * i + rank)
 
                 if rank == 1:  # serial mode for producing rf
-                    pyclassifier.step2_train_rf(ref_year=2001)
-                    logger_system.info("Training rf ends: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
+                    pyclassifier.step2_train_rf()
+                    print("Training rf ends: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
 
                 for i in range(nblock_eachcore):
                     if n_cores * i + rank > config['n_block_x'] * config['n_block_y']:
@@ -404,25 +417,27 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
             while not pyclassifier.is_finished_step4_assemble():
                 time.sleep(15)
             if rank == 1:
-                logger_system.info("Assemble classification map ends: {}".format(datetime.now(tz)
-                                                                                 .strftime('%Y-%m-%d %H:%M:%S')))
+                print("Assemble classification map ends: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
         #########################################################################
         #                      object-based image analysis                      #
         #########################################################################
-        n_map_percore = int(np.ceil(n_cm_maps / n_cores))
-        max_date = starting_date + (n_cm_maps - 1) * config['CM_OUTPUT_INTERVAL']
-        for i in range(n_map_percore):
-            if starting_date + (rank - 1 + i * n_cores) * config['CM_OUTPUT_INTERVAL'] > max_date:
-                break
-            date = starting_date + (rank - 1 + i * n_cores) * config['CM_OUTPUT_INTERVAL']
-            ob_analyst.obia_execute(date)
+        if ob_analyst.is_finished_object_analysis(np.arange(starting_date,
+                                                            starting_date+config['CM_OUTPUT_INTERVAL']*n_cm_maps,
+                                                            config['CM_OUTPUT_INTERVAL'])) == False:
+            n_map_percore = int(np.ceil(n_cm_maps / n_cores))
+            max_date = starting_date + (n_cm_maps - 1) * config['CM_OUTPUT_INTERVAL']
+            for i in range(n_map_percore):
+                if starting_date + (rank - 1 + i * n_cores) * config['CM_OUTPUT_INTERVAL'] > max_date:
+                    break
+                date = starting_date + (rank - 1 + i * n_cores) * config['CM_OUTPUT_INTERVAL']
+                ob_analyst.obia_execute(date)
 
-        while not ob_analyst.is_finished_object_analysis(np.arange(starting_date,
-                                                                   starting_date+config['CM_OUTPUT_INTERVAL']*n_cm_maps,
-                                                                   config['CM_OUTPUT_INTERVAL'])):
-            time.sleep(15)
+            while not ob_analyst.is_finished_object_analysis(np.arange(starting_date,
+                                                                       starting_date+config['CM_OUTPUT_INTERVAL']*n_cm_maps,
+                                                                       config['CM_OUTPUT_INTERVAL'])):
+                time.sleep(15)
         if rank == 1:
-            logger_system.info("OBIA ends: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
+            print("OBIA ends: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
 
         #########################################################################
         #                        reconstruct change records                     #
@@ -443,12 +458,12 @@ def main(rank, n_cores, stack_path, result_path, yaml_path, method, seedmap_path
         # tile_based report
         if method == 'OBCOLD':
             tileprocessing_report(join(result_path, 'tile_processing_report.log'),
-                                  stack_path, pycold.__version__, method, config, start_time, tz,
+                                  stack_path, pycold.__version__, method, config, start_time, cold_timepoint, tz,
                                   starting_date, n_cm_maps, year_lowbound, year_uppbound)
         else:
             tileprocessing_report(join(result_path, 'tile_processing_report.log'),
-                                  stack_path, pycold.__version__, method, config, start_time, tz)
-        logger_system.info("The whole procedure finished: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
+                                  stack_path, pycold.__version__, method, config, start_time, cold_timepoint, tz)
+        print("The whole procedure finished: {}".format(datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')))
 
 
 if __name__ == '__main__':

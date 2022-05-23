@@ -811,24 +811,22 @@ def main(source_dir, out_dir, clear_threshold, single_path, rank, n_cores, is_pa
             dst = None
             out_img = None
             shutil.rmtree(join(tmp_path, folder_list[0]), ignore_errors=True)
-        
-        # saving starting and ending date for this dataset, note that python ordinal dates has 366 days with Matlab
-        # ordinal dates, so we add 366 to facilitate verification with MATLAB results
+
         if c2 is False:
             ordinal_Dates = [pd.Timestamp.toordinal(dt.datetime(int(folder[15:19]), int(folder[19:21]),
-                                                                int(folder[21:23]))) + 366
+                                                                int(folder[21:23])))
                              for folder in folder_list]
         else:
             ordinal_Dates = [pd.Timestamp.toordinal(dt.datetime(int(folder[17:21]), int(folder[21:23]),
-                                                                int(folder[23:25]))) + 366
+                                                                int(folder[23:25])))
                              for folder in folder_list]
         ordinal_Dates.sort()
         file = open(join(out_dir, "starting_last_dates.txt"), "w+")  # need to save out starting and
         # lasting date for this tile
         file.writelines("{}\n".format(str(np.max([ordinal_Dates[0],
-                                                 pd.Timestamp.toordinal(dt.datetime(low_year_bound, 1, 1)) + 366]))))
+                                                 pd.Timestamp.toordinal(dt.datetime(low_year_bound, 1, 1))]))))
         file.writelines("{}\n".format(str(np.min([ordinal_Dates[-1],
-                                                 pd.Timestamp.toordinal(dt.datetime(upp_year_bound, 12, 31)) + 366]))))
+                                                 pd.Timestamp.toordinal(dt.datetime(upp_year_bound, 12, 31))]))))
         file.close()
     else:
         logging.basicConfig(filename=join(os.getcwd(), 'AutoPrepareDataARD.log'),
