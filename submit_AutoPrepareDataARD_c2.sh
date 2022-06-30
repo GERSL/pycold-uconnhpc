@@ -14,6 +14,8 @@ source_path="/shared/cn450/suuuuuu/p123r030"
 stack_path="/scratch/suy20004/suy20004/p123r030_stack"
 id=1
 shp_path="/home/suy20004/Document/shapefile/bound2.shp"
+pycold_path='/home/suy20004/Document/pycold'
+
 
 module purge
 module load gsl/2.4
@@ -26,4 +28,4 @@ module load gsl/2.4
 source /home/suy20004/miniconda3/etc/profile.d/conda.sh
 conda activate pycold_py37
 
-python3 AutoPrepareDataARD.py --source_dir=$source_path --out_dir=$stack_path --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --yaml_path=$yaml_path --c2 --shapefile_path=$shp_path --id=$id
+python3 $pycold_path/src/python/pycold/imagetool/AutoPrepareDataARD.py --source_dir=$source_path --out_dir=$stack_path --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --yaml_path=$yaml_path --c2 --shapefile_path=$shp_path --id=$id

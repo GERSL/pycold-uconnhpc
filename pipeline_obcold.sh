@@ -1,8 +1,8 @@
 #! /bin/bash
 
 # variable inputs
-h="002"
-v="008"
+h="003"
+v="004"
 method="OBCOLD"
 
 if [ "$1" == "c" ] # stacking + pycold + exportmaps

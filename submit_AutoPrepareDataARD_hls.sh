@@ -2,23 +2,19 @@
 ##SBATCH --partition=generalsky                         # Name of Partition
 #SBATCH --partition=EpycPriority
 #SBATCH --account=zhz18039
-## SBATCH --ntasks=1                                # Request 256 CPU cores
+#SBATCH --ntasks=1                                # Request 256 CPU cores
 #SBATCH --time=12:00:00                              # Job should run for up to 1.5 hours (for example)
-#SBATCH --array 1-200
+#SBATCH --array 1-100
 #SBATCH --mail-type=END                              # Event(s) that triggers email notification (BEGIN,END,FAIL,ALL)
-#SBATCH --exclude=cn355,cn406,cn217,cn373,cn67,cn87,cn376,cn68
+#SBATCH --exclude=cn355,cn406,cn217,cn373,cn67,cn87,cn376,cn68,cn448
 
+tile_id="18TYM"
+data_dir="/scratch/suy20004/suy20004/meta"
+yaml_path="/home/suy20004/Document/pycold-uconnhpc/config_hls.yaml"
 
-h="027"   # the h id of your ard tile
-v="009"    # the v id of your ard tile
-working_dir="/scratch/your_scratch_folder"   # the place to save the result folder
-yaml_path="/home/your_home_folder/pycold-uconnhpc/config.yaml"   # the path of your parameter yaml
-data_dir="/shared/cn449/DataLandsatARDCONUS"
-pycold_path='/home/your_home_folder/pycold'
-
-
-source_path="$data_dir/h${h}v${v}"
-stack_path="$working_dir/h${h}v${v}_stack"
+source_path="$data_dir/${tile_id}"
+stack_path="/scratch/suy20004/suy20004/${tile_id}_stack"
+pycold_path='/home/suy20004/Document/pycold'
 
 module purge
 module load gsl/2.4
@@ -29,6 +25,6 @@ module load java/1.8.0_162
 module load gsl/2.4
 
 source /home/suy20004/miniconda3/etc/profile.d/conda.sh
-conda activate pycold_py37
+conda activate pycold_py38
 
-python3 $pycold_path/src/python/pycold/imagetool/AutoPrepareDataARD.py --source_dir=$source_path --out_dir=$stack_path --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --yaml_path=$yaml_path
+python3 $pycold_path/src/python/pycold/imagetool/AutoPrepareDataARD.py --source_dir=$source_path --out_dir=$stack_path --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --yaml_path=$yaml_path --collection=HLS

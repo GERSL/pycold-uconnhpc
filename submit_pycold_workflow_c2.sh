@@ -18,6 +18,7 @@ stack_path="/scratch/suy20004/suy20004/p194r055_stack"
 result_path="/scratch/suy20004/suy20004/p194r055_results"
 yaml_path="/home/suy20004/Document/pycold-uconnhpc/config.yaml"
 seedmap_path="/scratch/suy20004/suy20004/africa/globalandoverlaid.tif"
+pycold_path='/home/suy20004/Document/pycold'
 
 module purge
 # load commonly-used module
@@ -27,5 +28,5 @@ module load java/1.8.0_162
 module load gsl/2.4
 
 source /home/suy20004/miniconda3/etc/profile.d/conda.sh
-conda activate pycold_py37
-python3 pycold_workflow.py --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --result_path=$result_path --stack_path=$stack_path --yaml_path=$yaml_path --method='OBCOLD' --seedmap_path=$seedmap_path
+conda activate pycold_py38
+python3 $pycold_path/src/python/pycold/imagetool/TileProcessing.py --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --result_path=$result_path --stack_path=$stack_path --yaml_path=$yaml_path --method='OBCOLD' --seedmap_path=$seedmap_path
