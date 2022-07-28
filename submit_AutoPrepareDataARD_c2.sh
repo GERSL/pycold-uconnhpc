@@ -28,4 +28,4 @@ module load gsl/2.4
 source /home/suy20004/miniconda3/etc/profile.d/conda.sh
 conda activate pycold_py37
 
-python3 $pycold_path/src/python/pycold/imagetool/AutoPrepareDataARD.py --source_dir=$source_path --out_dir=$stack_path --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --yaml_path=$yaml_path --c2 --shapefile_path=$shp_path --id=$id
+python3 $pycold_path/src/python/pycold/imagetool/prepare_ard.py --source_dir=$source_path --out_dir=$stack_path --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --yaml_path=$yaml_path --c2 --shapefile_path=$shp_path --id=$id

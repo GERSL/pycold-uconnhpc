@@ -21,4 +21,4 @@ module load sqlite/3.18.0 tcl/8.6.6.8606 gcc/5.4.0-alt zlib/1.2.11 java/1.8.0_16
 # source /home/suy20004/miniconda3/etc/profile.d/conda.sh
 # conda activate pycold
 
-mpirun python3 $pycold_path/src/python/pycold/imagetool/exportChangeMap.py --reccg_path=$reccg_path --reference_path=$reference_path --out_path=$out_path --method=$method --yaml_path=$yaml_path
+mpirun python3 $pycold_path/src/python/pycold/imagetool/export_change_map.py --reccg_path=$reccg_path --reference_path=$reference_path --out_path=$out_path --method=$method --yaml_path=$yaml_path
