@@ -31,4 +31,4 @@ module load java/1.8.0_162
 module load gsl/2.4
 source /home/suy20004/miniconda3/etc/profile.d/conda.sh
 conda activate pycold_py38
-python3 $pycold_path/src/python/pycold/imagetool/TileProcessing.py --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --result_path=$result_path --seedmap_path=$seedmap_path --stack_path=$stack_path --yaml_path=$yaml_path --method='SCCDOFFLINE' --upper_datebound='2021-12-31'
+python3 $pycold_path/src/python/pycold/imagetool/tile_processing.py --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --result_path=$result_path --seedmap_path=$seedmap_path --stack_path=$stack_path --yaml_path=$yaml_path --method='SCCDOFFLINE' --upper_datebound='2021-12-31'
