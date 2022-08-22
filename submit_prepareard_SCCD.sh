@@ -4,17 +4,19 @@
 #SBATCH --account=zhz18039
 #SBATCH --ntasks=1                                # Request 256 CPU cores
 #SBATCH --time=12:00:00                              # Job should run for up to 1.5 hours (for example)
-#SBATCH --array 1-100
+#SBATCH --array 1-200
 #SBATCH --mail-type=END                              # Event(s) that triggers email notification (BEGIN,END,FAIL,ALL)
 #SBATCH --exclude=cn355,cn406,cn217,cn373,cn67,cn87,cn376,cn68,cn448
 
-tile_id="18TYM"
-data_dir="/scratch/suy20004/suy20004/meta"
-yaml_path="/home/suy20004/Document/pycold-uconnhpc/config_hls.yaml"
 
-source_path="$data_dir/${tile_id}"
-stack_path="/scratch/suy20004/suy20004/${tile_id}_stack"
+working_dir="/scratch/suy20004/suy20004"
+data_dir="/shared/cn449/DataLandsatARDCONUS"
+yaml_path="/home/suy20004/Document/pycold-uconnhpc/config.yaml"
 pycold_path='/home/suy20004/Document/pycold'
+
+
+source_path="$data_dir/h${1}v${2}"
+stack_path="$working_dir/h${1}v${2}_stack"
 
 module purge
 module load gsl/2.4
@@ -25,6 +27,6 @@ module load java/1.8.0_162
 module load gsl/2.4
 
 source /home/suy20004/miniconda3/etc/profile.d/conda.sh
-conda activate pycold_py38
+conda activate pycold_py37
 
-python3 $pycold_path/src/python/pycold/imagetool/prepare_ard.py --source_dir=$source_path --out_dir=$stack_path --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --yaml_path=$yaml_path --collection=HLS
+python3 $pycold_path/src/python/pycold/imagetool/prepare_ard.py --source_dir=$source_path --out_dir=$stack_path --rank=$SLURM_ARRAY_TASK_ID --n_cores=$SLURM_ARRAY_TASK_MAX --yaml_path=$yaml_path
