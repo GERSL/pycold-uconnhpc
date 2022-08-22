@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --partition=generalsky                         # Name of Partition
-##SBATCH --partition=EpycPriority
-##SBATCH --account=zhz18039
+##SBATCH --partition=generalsky                         # Name of Partition
+#SBATCH --partition=EpycPriority
+#SBATCH --account=zhz18039
 ##SBATCH --mem-per-cpu=4G
 ##SBATCH --account=osgusers
 ##SBATCH --partition=OSGPriority
@@ -9,10 +9,10 @@
 ##SBATCH --share
 #SBATCH --ntasks=1
 #SBATCH --time=12:00:00                              # Job should run for up to 1.5 hours (for example)
-#SBATCH --array 1-100
+#SBATCH --array 1-200
 #SBATCH --mail-type=END                              # Event(s) that triggers email notification (BEGIN,END,FAIL,ALL)
 ##SBATCH --exclude=cn[66-69,71-136,325-328,376]
-#SBATCH --exclude=cn355,cn406,cn217,cn373,cn67,cn87,cn376,cn68,cn116,cn338,cn330,cn398,cn346,cn364,cn368,cn450,cn448,cn354,cn392,cn343,cn400,cn403,cn455,cn448,cn449,cn451,gpu13 
+#SBATCH --exclude=cn355,cn406,cn217,cn373,cn67,cn87,cn376,cn68,cn116,cn338,cn330,cn398,cn346,cn364,cn368,cn450,cn448,cn354,cn392,cn343,cn400,cn403,cn455,cn448 
 
 
 # tile_id="18TYM"
