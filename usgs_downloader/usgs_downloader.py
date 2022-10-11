@@ -343,8 +343,7 @@ if __name__ == "__main__":
                 if product_info["available"]:
                     if args.dataset == 'landsat_ard_tile_c2':
                         if product_info["productName"] == 'C2 ARD Tile Surface Reflectance Bundle Download' or \
-                                product_info["productName"] == 'C2 ARD Tile Brightness Temperature Bundle Download' or \
-                                product_info["productName"] == 'C2 ARD Tile Quality Assessment Bundle Download':
+                                product_info["productName"] == 'C2 ARD Tile Brightness Temperature Bundle Download':
                             # add the product to cart
                             shopping_cart.append({ "productId": product_info["id"], "entityId": product_info["entityId"] })
                     else:
