@@ -21,6 +21,7 @@ Sentinel 2A	sentinel_2a
 
 import requests, json, sys, threading, os, time, re, random
 from argparse import ArgumentParser
+import geopandas as gp
 
 # script state vars
 client=None
@@ -241,6 +242,8 @@ def build_command_line_arguments():
                         help='ERS Username (with full M2M download access)')
     parser.add_argument('-p', '--password', type=str, dest='password', required=True, default=None, metavar='<password>',
                         help='ERS Password')
+    parser.add_argument('-h', '--horizontal', type=int, help='horizontal id for ARD')
+    parser.add_argument('-v', '--vertical', type=int, help='horizontal id for ARD')
     parser.add_argument('-s', '--scenes-file', type=str, dest='scenes_file', metavar='<path to scenes file>',
                         help='Path to a line-separated list of IDs for scenes to download')
     parser.add_argument('-f', '--filter', type=str, dest='filt', metavar='<filer JSON contents>',
@@ -248,11 +251,11 @@ def build_command_line_arguments():
     parser.add_argument('--filter-is-path', dest='filter_is_path',
                         help='Use the filter option as a path to a file containing the JSON data, '
                              'rather than the data itself', action='store_true')
-    parser.add_argument('-c', '--dataset', type=str, dest='dataset', default='ARD_TILE', metavar='<dataset name>',
+    parser.add_argument('-c', '--dataset', type=str, dest='dataset', default='landsat_ard_tile_c2', metavar='<dataset name>',
                         help='Name of the data set or id of the entity from which to download data')
     parser.add_argument('-m', '--max', type=int, dest='max_results', default=10000, metavar='<max threads>',
                         help="Maximum number of results for the search (if applicable)")
-    parser.add_argument('-t', '--threads', type=int, dest='max_threads', default=1, metavar='<max threads>',
+    parser.add_argument('-t', '--threads', type=int, dest='max_threads', default=2, metavar='<max threads>',
                         help="Maximum number of threads this script may use for downloading")
     parser.add_argument('-D', '--debug', dest='debug', help='Enable debug printing', action='store_true')
     args = parser.parse_args()
@@ -286,6 +289,22 @@ if __name__ == "__main__":
         # log in
         api_token = api_req("login", {"username": args.username, "password": args.password})
         scenes = []
+
+        if args.dataset == 'ARD_TILE' or args.dataset == 'landsat_ard_tile_c2':
+            try:
+                field = gp.read_file(os.path.join(os.getcwd(), 'CONUS_ARD_grid/conus_ard_grid.shp')).to_crs(4326)
+            except:
+                print('Error: cannot locate hls_s2_tiles.shp file')
+
+            fieldShape = field[(field['h'] == args.horizontal) & (field['v'] == args.vertical)]['geometry']
+            centerx = (float(fieldShape.bounds['minx']) + float(fieldShape.bounds['maxx'])) / 2
+            centery = (float(fieldShape.bounds['miny']) + float(fieldShape.bounds['maxy'])) / 2
+
+            SpatialFilter = {"filterType" : "mbr",
+                             "lowerLeft" : { "latitude" : centery, "longitude" : centerx },
+                             "upperRight" : { "latitude" : centery, "longitude" : centerx }}
+        else:
+            SpatialFilter = None  # put a temp here
         
         # check if scenes are supplied by list
         if args.scenes_file:
@@ -302,7 +321,8 @@ if __name__ == "__main__":
             if args.filter_is_path:
                 filt = open(filt, "r").read()
             filt = json.loads(filt)
-            data = {"datasetName": args.dataset, "sceneFilter": filt, "maxResults": args.max_results}
+            filt["spatialFilter"] = SpatialFilter
+            data = {"datasetName" : args.dataset, "sceneFilter": filt, "maxResults" : args.max_results}
             info_print("Searching for scenes with provided SceneFilter")
             resp = api_req("scene-search", data)
             for result in resp["results"]:
@@ -317,12 +337,18 @@ if __name__ == "__main__":
             info_print("%d scenes found" % len(scenes))
             
             # get the available products for the scenes
-            products_info = api_req("download-options", { "datasetName": args.dataset, "entityIds": scenes })
+            products_info = api_req("download-options", { "datasetName": args.dataset, "entityIds": scenes})
             for product_info in products_info:
                 # for now, we will download anything that's in one of our scene's bundles
                 if product_info["available"]:
-                    # add the product to cart
-                    shopping_cart.append({ "productId": product_info["id"], "entityId": product_info["entityId"] })
+                    if args.dataset == 'landsat_ard_tile_c2':
+                        if product_info["productName"] == 'C2 ARD Tile Surface Reflectance Bundle Download' or \
+                                product_info["productName"] == 'C2 ARD Tile Brightness Temperature Bundle Download' or \
+                                product_info["productName"] == 'C2 ARD Tile Quality Assessment Bundle Download':
+                            # add the product to cart
+                            shopping_cart.append({ "productId": product_info["id"], "entityId": product_info["entityId"] })
+                    else:
+                        shopping_cart.append({"productId": product_info["id"], "entityId": product_info["entityId"]})
             
             FILE_COUNT_MAX = len(shopping_cart)
             
@@ -378,7 +404,9 @@ if __name__ == "__main__":
         # if the last few were skipped, let us know
         with downloader_lock:
             if file_count - last_print_file_count > 0:
-                    info_print("Skipped to (%s / %s): previous were already downloaded" % (make_size(str(file_count), len(str(FILE_COUNT_MAX))), str(FILE_COUNT_MAX)))
+                    info_print("Skipped to (%s / %s): previous were already downloaded" % (make_size(str(file_count),
+                                                                                                     len(str(FILE_COUNT_MAX))),
+                                                                                           str(FILE_COUNT_MAX)))
         # log out
         # if api_token:
         #    api_req("logout", err_handler=do_nothing)
