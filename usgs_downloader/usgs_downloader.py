@@ -3,9 +3,6 @@ Machine-to-machine USGS data downloader
 
 Based on and uses code from Dr. Su Ye's https://github.com/SuYe99/S-CCD/blob/53f23b5e22294d582dc8466ebdc03d22a032d6c2/tool/python/download_m2m.py
 As well as the example code provided by USGS
-
-Author: Ian Abrams
-
 Dataset Name	Dataset ID
 Landsat 5 TM Collection 1 Level 1	landsat_tm_c1
 Landsat 5 TM Collection 2 Level 1	landsat_tm_c2_l1
@@ -197,7 +194,7 @@ def start_downloader():
     if MAX_THREADS > 0:
         with downloader_lock:
             thread_name = available_thread_callsigns.pop()
-    
+
     debug_print("Downloader started", prefix=thread_name)
     
     while True:
@@ -278,10 +275,10 @@ if __name__ == "__main__":
         out_dir_path = args.directory
         if args.max_threads <= 0:
             raise Exception("Must have at least one download thread!")
-        
+
         if args.max_threads > 0:
             available_thread_callsigns = [get_pretty_thread_print_prefix(str(i)) for i in range(args.max_threads-1) ]
-        
+
         # create the thread pool controller
         MAX_THREADS = args.max_threads
         active_threads = 1 # this main thread
