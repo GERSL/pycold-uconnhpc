@@ -9,7 +9,7 @@ Hi GERSers,
 
 When you started reading this repo, it indicates that you are thinking about using [pycold](https://github.com/GERSL/pycold) in the UCONN HPC to process big-data **tile-based time series dataset**. 
 
-First, I recommend using pip over conda to set up your python environment. Conda worked well in most cases except for when it occasionally has conflicts with pip-installed packages. Considering pip has more package supports (such as Earthpy), I chose a uniform pip environment which guarantees that we could successfully install almost common geomatic packages. 
+First, I recommend using pip over conda to set up your python environment. Conda worked well in most cases except for when it occasionally has conflicts with pip-installed packages. Considering pip has more package supports (such as Earthpy), I chose a uniform pip environment which guarantees that we could successfully install almost all common geomatic packages. 
 
 If you are Window system user and choose python as your primary programming language, Cygwin terminal (https://www.cygwin.com/) is recommended, as other window-based terminals such as Mobabus may have issues with Jupyter notebook connection.  Another advantage of using CLI-based terminal than GUI-based is CLI-based terminal often incorporates many useful softwares such as git and conda, where you can better keep up with modern computational technology. 
 
@@ -71,7 +71,7 @@ A quick test using the python console
 >> import pycold
 ```
 
-** Note that the pycold can be only successfully installed in OCX and Linux platform temporally. I encounterred a compiler issue in the Window system, and will work on Window platform some time point in this year.
+** Note that the pycold can be only successfully installed in OCX and Linux platform for now. I encounterred a compiler issue in the Window system, and will work on Window platform some time point in this year.
 
 
 
@@ -175,7 +175,7 @@ Then submit the job:
 sbatch submit_tileprocessing_ard.sh
 ```
 
-This process typically took 1-1.5 hours to finish (200 cores, skylake or EpycPriority nodes); you will see a folder named 'h029v006' created in working_dir.
+This process typically took 1-1.5 hours to finish (200 cores, skylake or EpycPriority nodes); you will see a folder named 'h029v006_results' created in working_dir.
 
 #### 3.2.3 submit_exportChangeMap_ard_template.sh 
 
